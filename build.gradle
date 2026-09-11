@@ -6,19 +6,15 @@ buildscript {
     }
     dependencies {
         // "+" = always resolve the newest published Loom build automatically.
-        // I couldn't confirm one specific Loom version number against a real
-        // 26.1.2 project the way I did for loader_version/fabric_version
-        // below, so this avoids pinning a guess that might not exist.
-        // Loom's plugin id for unobfuscated versions (26.1+) is
-        // net.fabricmc.fabric-loom, confirmed via Fabric's own docs.
         classpath "net.fabricmc:fabric-loom:+"
     }
 }
-apply plugin: "net.fabricmc.fabric-loom"
 
 plugins {
     id 'maven-publish'
 }
+
+apply plugin: "net.fabricmc.fabric-loom"
 
 version = project.mod_version
 group = project.maven_group
@@ -37,8 +33,6 @@ dependencies {
     // No `mappings(...)` line: 26.1.2 is unobfuscated and ships Mojang's real
     // names directly, so there is nothing for Loom to remap against.
 
-    // 26.1+ dropped the `mod*` dependency configurations - plain configs work
-    // since there's no obfuscated-name remapping step anymore.
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
@@ -60,7 +54,6 @@ processResources {
 
 java {
     withSourcesJar()
-    // 26.1.2 requires Java 25.
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }
