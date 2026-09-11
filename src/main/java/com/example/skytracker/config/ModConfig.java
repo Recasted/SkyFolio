@@ -27,6 +27,21 @@ public class ModConfig {
     public int decimalPrecision = 2;
     public boolean darkTheme = true;
 
+    // --- Stage 2 settings (Section 4/22 of the spec) ---
+    public boolean overlayEnabled = true;
+    public int overlayX = 10;
+    public int overlayY = 10;
+    public double overlayScale = 1.0;
+
+    // --- Stage 5 settings (Sections 15/22/47) ---
+    public String priceSource = "MANUAL"; // MANUAL or SKYCOFL
+    public boolean auctionWatcherEnabled = false;
+    public boolean chatNotificationsEnabled = true;
+    public int auctionCheckIntervalSeconds = 45;
+
+    // --- Stage 6 settings (Section 24: performance) ---
+    public boolean containerValuationEnabled = true;
+
     public static ModConfig loadOrCreateDefault() {
         try {
             Files.createDirectories(CONFIG_DIR);

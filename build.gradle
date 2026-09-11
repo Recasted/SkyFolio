@@ -1,6 +1,22 @@
+buildscript {
+    repositories {
+        maven { url = "https://maven.fabricmc.net/" }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    dependencies {
+        // "+" = always resolve the newest published Loom build automatically.
+        // I couldn't confirm one specific Loom version number against a real
+        // 26.1.2 project the way I did for loader_version/fabric_version
+        // below, so this avoids pinning a guess that might not exist.
+        // Loom's plugin id for unobfuscated versions (26.1+) is
+        // net.fabricmc.fabric-loom, confirmed via Fabric's own docs.
+        classpath "net.fabricmc:fabric-loom:+"
+    }
+}
+apply plugin: "net.fabricmc.fabric-loom"
+
 plugins {
-    // 26.1+ toolchain: plugin id changed from "fabric-loom" to "net.fabricmc.fabric-loom".
-    id 'net.fabricmc.fabric-loom' version '1.11-SNAPSHOT'
     id 'maven-publish'
 }
 

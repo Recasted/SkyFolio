@@ -1,39 +1,46 @@
 package com.example.skytracker.gui;
 
 import com.example.skytracker.data.Goal;
+import com.example.skytracker.config.ModConfig;
+import com.example.skytracker.skins.SkinDatabase;
 import com.example.skytracker.storage.DataStorage;
+import com.example.skytracker.tracker.ProfitTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 // Ported to official (Mojang) mapping names for MC 26.1.2:
 //   DrawContext -> GuiGraphics, Text -> Component, ButtonWidget -> Button,
 //   package screen -> screens, .dimensions(...) -> .bounds(...),
 //   textRenderer field -> font field.
-// I'm confident in these (they're long-standing Mojmap names from before the
-// unobfuscation), but the exact GuiGraphics.drawString overload for
-// with/without shadow is worth a quick check against the current Javadoc -
-// I used the most common 5-arg form below.
 
 /**
- * Stage 1 dashboard: shows the goal list with progress bars. Profit/Skins/
- * Wishlist/Inventory/Net-worth/Settings tabs are added in later stages -
- * this establishes the shared tab-bar pattern they'll all reuse.
+ * Stage 3+ dashboard: goal list with progress bars, top nav to every other
+ * screen (Section 21's tab list), and a per-goal Edit button.
  */
 public class DashboardScreen extends Screen {
 
     private static final int PANEL_COLOR = 0xE0141414;
     private static final int ACCENT_COLOR = 0xFF7C4DFF;
     private static final int TEXT_MUTED = 0xFFAAAAAA;
+    private static final int ROW_HEIGHT = 26;
 
     private final DataStorage storage;
+    private final ProfitTracker tracker;
+    private final SkinDatabase skinDatabase;
+    private final ModConfig config;
+    private final List<Button> goalEditButtons = new ArrayList<>();
 
-    public DashboardScreen(DataStorage storage) {
+    public DashboardScreen(DataStorage storage, ProfitTracker tracker, SkinDatabase skinDatabase, ModConfig config) {
         super(Component.literal("SkyBlock Tracker"));
         this.storage = storage;
+        this.tracker = tracker;
+        this.skinDatabase = skinDatabase;
+        this.config = config;
     }
 
     @Override
@@ -41,14 +48,46 @@ public class DashboardScreen extends Screen {
         super.init();
         int centerX = this.width / 2;
 
-        this.addRenderableWidget(Button.builder(Component.literal("Add Goal"), btn -> {
-            // Stage 2 will replace this with a proper Goal-creation screen.
-            Goal placeholder = new Goal("New Goal", Goal.Category.MONEY, 1_000_000_000);
-            storage.addGoal(placeholder);
-        }).bounds(centerX - 100, this.height - 40, 200, 20).build());
+        // --- Top nav (Section 21's tab list) ---
+        String[] labels = {"Profit", "Net Worth", "Skins", "Wishlist", "Settings"};
+        int navX = 20;
+        for (String label : labels) {
+            int width = 90;
+            Screen target = switch (label) {
+                case "Profit" -> new ProfitScreen(storage, tracker, this);
+                case "Net Worth" -> new NetWorthScreen(storage, this);
+                case "Skins" -> new SkinsScreen(storage, skinDatabase, this);
+                case "Wishlist" -> new WishlistScreen(storage, this);
+                default -> new SettingsScreen(config, this);
+            };
+            this.addRenderableWidget(Button.builder(Component.literal(label),
+                    btn -> this.minecraft.setScreen(target))
+                    .bounds(navX, 20, width, 20).build());
+            navX += width + 4;
+        }
+
+        // --- Bottom controls ---
+        this.addRenderableWidget(Button.builder(Component.literal("Add Goal"),
+                btn -> this.minecraft.setScreen(new GoalEditScreen(storage, this, null)))
+                .bounds(centerX - 100, this.height - 40, 200, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("Close"), btn -> onClose())
                 .bounds(centerX + 110, this.height - 40, 60, 20).build());
+
+        // --- Per-goal edit buttons, laid out alongside each rendered row ---
+        goalEditButtons.clear();
+        int panelX = 20;
+        int panelY = 46; // pushed down to make room for the nav row above
+        int panelW = this.width - 40;
+        int y = panelY + 34;
+        for (Goal goal : storage.goals) {
+            Button editBtn = Button.builder(Component.literal("Edit"),
+                    btn -> this.minecraft.setScreen(new GoalEditScreen(storage, this, goal)))
+                    .bounds(panelX + panelW - 12 - 40, y - 4, 40, 16).build();
+            this.addRenderableWidget(editBtn);
+            goalEditButtons.add(editBtn);
+            y += ROW_HEIGHT;
+        }
     }
 
     @Override
@@ -56,9 +95,9 @@ public class DashboardScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         int panelX = 20;
-        int panelY = 20;
+        int panelY = 46;
         int panelW = this.width - 40;
-        int panelH = this.height - 80;
+        int panelH = this.height - 46 - 60;
         context.fill(panelX, panelY, panelX + panelW, panelY + panelH, PANEL_COLOR);
 
         context.drawString(this.font, Component.literal("PRIORITY GOALS"),
@@ -72,8 +111,8 @@ public class DashboardScreen extends Screen {
         } else {
             int y = panelY + 34;
             for (Goal goal : goals) {
-                renderGoalRow(context, goal, panelX + 12, y, panelW - 24);
-                y += 26;
+                renderGoalRow(context, goal, panelX + 12, y, panelW - 24 - 48);
+                y += ROW_HEIGHT;
             }
         }
 
@@ -87,8 +126,9 @@ public class DashboardScreen extends Screen {
             case MEDIUM -> "\u00A7e\u25CF";   // yellow dot
             case LOW -> "\u00A7a\u25CF";      // green dot
         };
+        String status = goal.completed ? " \u00A7a[DONE]" : "";
         context.drawString(this.font,
-                Component.literal(priorityMark + " \u00A7f" + goal.name), x, y, 0xFFFFFFFF);
+                Component.literal(priorityMark + " \u00A7f" + goal.name + status), x, y, 0xFFFFFFFF);
 
         int barX = x;
         int barY = y + 12;
