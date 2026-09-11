@@ -1,0 +1,50 @@
+plugins {
+    // 26.1+ toolchain: plugin id changed from "fabric-loom" to "net.fabricmc.fabric-loom".
+    id 'net.fabricmc.fabric-loom' version '1.11-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    // Stage 5 will add: maven { url = "https://repo.hypixel.net/repository/Hypixel/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // No `mappings(...)` line: 26.1.2 is unobfuscated and ships Mojang's real
+    // names directly, so there is nothing for Loom to remap against.
+
+    // 26.1+ dropped the `mod*` dependency configurations - plain configs work
+    // since there's no obfuscated-name remapping step anymore.
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+processResources {
+    inputs.property "version", project.version
+    filteringCharset "UTF-8"
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+java {
+    withSourcesJar()
+    // 26.1.2 requires Java 25.
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
